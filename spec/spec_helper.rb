@@ -32,20 +32,8 @@ module Helpers
   def expect_update_to_update_repo!
     expect(Bundler::Audit::Database).
       to receive(:system).
-      with('git', 'pull', 'origin', 'master').
+      with('git', 'pull', '--no-rebase', 'origin', 'master').
       and_call_original
-  end
-
-  def fake_a_commit_in_the_user_repo
-    Dir.chdir(mocked_user_path) do
-      system 'git', 'commit', '--allow-empty', '-m', 'Dummy commit.'
-    end
-  end
-
-  def roll_user_repo_back(num_commits)
-    Dir.chdir(mocked_user_path) do
-      system 'git', 'reset', '--hard', "HEAD~#{num_commits}"
-    end
   end
 end
 

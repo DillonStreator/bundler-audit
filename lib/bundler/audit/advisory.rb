@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2016 Hal Brodigan (postmodern.mod3 at gmail.com)
+# Copyright (c) 2013-2020 Hal Brodigan (postmodern.mod3 at gmail.com)
 #
 # bundler-audit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,8 +26,10 @@ module Bundler
                                 :date,
                                 :description,
                                 :cvss_v2,
+                                :cvss_v3,
                                 :cve,
                                 :osvdb,
+                                :ghsa,
                                 :unaffected_versions,
                                 :patched_versions)
 
@@ -63,8 +65,10 @@ module Bundler
           data['date'],
           data['description'],
           data['cvss_v2'],
+          data['cvss_v3'],
           data['cve'],
           data['osvdb'],
+          data['ghsa'],
           parse_versions[data['unaffected_versions']],
           parse_versions[data['patched_versions']]
         )
@@ -89,16 +93,52 @@ module Bundler
       end
 
       #
+      # The GHSA (GitHub Security Advisory) identifier
+      #
+      # @return [String, nil]
+      #
+      # @since 0.7.0
+      #
+      def ghsa_id
+        "GHSA-#{ghsa}" if ghsa
+      end
+
+      #
+      # Return a compacted list of all ids
+      #
+      # @return [Array<String>]
+      #
+      # @since 0.7.0
+      #
+      def identifiers
+        [
+          cve_id,
+          osvdb_id,
+          ghsa_id
+        ].compact
+      end
+
+      #
       # Determines how critical the vulnerability is.
       #
-      # @return [:low, :medium, :high]
-      #   The criticality of the vulnerability based on the CVSSv2 score.
+      # @return [:none, :low, :medium, :high, :critical]
+      #   The criticality of the vulnerability based on the CVSS score.
       #
       def criticality
-        case cvss_v2
-        when 0.0..3.3  then :low
-        when 3.3..6.6  then :medium
-        when 6.6..10.0 then :high
+        if cvss_v3
+          case cvss_v3
+          when 0.0       then :none
+          when 0.1..3.9  then :low
+          when 4.0..6.9  then :medium
+          when 7.0..8.9  then :high
+          when 9.0..10.0 then :critical
+          end
+        elsif cvss_v2
+          case cvss_v2
+          when 0.0..3.9  then :low
+          when 4.0..6.9  then :medium
+          when 7.0..10.0 then :high
+          end
         end
       end
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2016 Hal Brodigan (postmodern.mod3 at gmail.com)
+# Copyright (c) 2013-2020 Hal Brodigan (postmodern.mod3 at gmail.com)
 #
 # bundler-audit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ module Bundler
       #
       def self.path
         if File.directory?(USER_PATH)
-          t1 = Dir.chdir(USER_PATH) { Time.parse(`git log --date=iso8601 --pretty="%cd" -1`) }
+          t1 = Dir.chdir(USER_PATH) { Time.parse(`git log --date=iso8601 --pretty="%cd" -1`).utc }
           t2 = VENDORED_TIMESTAMP
 
           if t1 >= t2 then USER_PATH
@@ -82,12 +82,18 @@ module Bundler
       #
       # Updates the ruby-advisory-db.
       #
-      # @param [Boolean, quiet]
+      # @param [Hash] options
+      #   Additional options.
+      #
+      # @option options [Boolean] :quiet
       #   Specify whether `git` should be `--quiet`.
       #
       # @return [Boolean, nil]
       #   Specifies whether the update was successful.
       #   A `nil` indicates no update was performed.
+      #
+      # @raise [ArgumentError]
+      #   Invalid options were given.
       #
       # @note
       #   Requires network access.
@@ -95,11 +101,14 @@ module Bundler
       # @since 0.3.0
       #
       def self.update!(options={})
-        raise "Invalid option(s)" unless (options.keys - [:quiet]).empty?
+        unless (options.keys - [:quiet]).empty?
+          raise(ArgumentError,"Invalid option(s)")
+        end
+
         if File.directory?(USER_PATH)
           if File.directory?(File.join(USER_PATH, ".git"))
             Dir.chdir(USER_PATH) do
-              command = %w(git pull)
+              command = %w(git pull --no-rebase)
               command << '--quiet' if options[:quiet]
               command << 'origin' << 'master'
               system *command

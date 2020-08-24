@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2016 Hal Brodigan (postmodern.mod3 at gmail.com)
+# Copyright (c) 2013-2020 Hal Brodigan (postmodern.mod3 at gmail.com)
 #
 # bundler-audit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,9 +35,9 @@ module Bundler
       method_option :verbose, :type => :boolean, :aliases => '-v'
       method_option :ignore, :type => :array, :aliases => '-i'
       method_option :update, :type => :boolean, :aliases => '-u'
-      method_option :format, :type => :string, :default => 'text',
-                             :aliases => '-F'
+      method_option :format, :type => :string, :default => 'text'
       method_option :output, :type => :string, :aliases => '-o'
+      method_option :file, type: :string
 
       def check
         begin
@@ -49,7 +49,11 @@ module Bundler
 
         update if options[:update]
 
-        scanner = Scanner.new
+        scanner = if options[:file]
+          Scanner.new(Dir.pwd, options[:file])
+        else
+          Scanner.new
+        end
         report  = scanner.report(:ignore => options.ignore)
 
         output = if options[:output] then File.new(options[:output],'w')
@@ -74,6 +78,10 @@ module Bundler
           say "Failed updating ruby-advisory-db!", :red
           exit 1
         when nil
+          unless Bundler.git_present?
+            say "Git is not installed!", :red
+            exit 1
+          end
           say "Skipping update", :yellow
         end
 

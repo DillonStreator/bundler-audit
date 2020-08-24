@@ -5,7 +5,7 @@ require 'bundler/audit/advisory'
 describe Bundler::Audit::Advisory do
   let(:root) { Bundler::Audit::Database::VENDORED_PATH }
   let(:gem)  { 'actionpack' }
-  let(:id)   { 'OSVDB-84243' }
+  let(:id)   { 'CVE-2012-3424' }
   let(:path) { File.join(root,'gems',gem,"#{id}.yml") }
   let(:an_unaffected_version) do
     Bundler::Audit::Advisory.load(path).unaffected_versions.map { |version_rule|
@@ -52,6 +52,11 @@ describe Bundler::Audit::Advisory do
     describe '#cvss_v2' do
       subject { super().cvss_v2 }
       it { is_expected.to eq(data['cvss_v2'])     }
+    end
+
+    describe '#cvss_v3' do
+      subject { super().cvss_v3 }
+      it { is_expected.to eq(data['cvss_v3'])     }
     end
 
     describe '#description' do
@@ -123,28 +128,79 @@ describe Bundler::Audit::Advisory do
     end
   end
 
+  describe "#ghsa_id" do
+    let(:ghsa) { "xfhh-rx56-rxcr" }
+
+    subject do
+      described_class.new.tap do |advisory|
+        advisory.ghsa = ghsa
+      end
+    end
+
+    it "should prepend GHSA- to the GHSA id" do
+      expect(subject.ghsa_id).to be == "GHSA-#{ghsa}"
+    end
+
+    context "when ghsa is nil" do
+      subject { described_class.new }
+
+      it { expect(subject.ghsa_id).to be_nil }
+    end
+  end
+
+  describe "#identifiers" do
+    it "should include all identifiers if defined" do
+      advisory = described_class.new.tap do |advisory|
+        advisory.cve = "2018-1234"
+        advisory.osvdb = "2019-2345"
+        advisory.ghsa = "2020-3456"
+      end
+
+      expect(advisory.identifiers).to eq([
+        "CVE-2018-1234",
+        "OSVDB-2019-2345",
+        "GHSA-2020-3456"
+      ])
+    end
+
+    it "should exclude nil identifiers" do
+      advisory = described_class.new
+      expect(advisory.identifiers).to eq([])
+
+      advisory = described_class.new.tap do |advisory|
+        advisory.cve = "2018-1234"
+      end
+      expect(advisory.identifiers).to eq(["CVE-2018-1234"])
+
+      advisory = described_class.new.tap do |advisory|
+        advisory.ghsa = "2020-3456"
+      end
+      expect(advisory.identifiers).to eq(["GHSA-2020-3456"])
+    end
+  end
+
   describe "#criticality" do
-    context "when cvss_v2 is between 0.0 and 3.3" do
+    context "when cvss_v2 is between 0.0 and 3.9" do
       subject do
         described_class.new.tap do |advisory|
-          advisory.cvss_v2 = 3.3
+          advisory.cvss_v2 = 3.9
         end
       end
 
       it { expect(subject.criticality).to eq(:low) }
     end
 
-    context "when cvss_v2 is between 3.3 and 6.6" do
+    context "when cvss_v2 is between 4.0 and 6.9" do
       subject do
         described_class.new.tap do |advisory|
-          advisory.cvss_v2 = 6.6
+          advisory.cvss_v2 = 6.9
         end
       end
 
       it { expect(subject.criticality).to eq(:medium) }
     end
 
-    context "when cvss_v2 is between 6.6 and 10.0" do
+    context "when cvss_v2 is between 7.0 and 10.0" do
       subject do
         described_class.new.tap do |advisory|
           advisory.cvss_v2 = 10.0
@@ -152,6 +208,56 @@ describe Bundler::Audit::Advisory do
       end
 
       it { expect(subject.criticality).to eq(:high) }
+    end
+
+    context "when cvss_v3 is 0.0" do
+      subject do
+        described_class.new.tap do |advisory|
+          advisory.cvss_v3 = 0.0
+        end
+      end
+
+      it { expect(subject.criticality).to eq(:none) }
+    end
+
+    context "when cvss_v3 is between 0.1 and 3.9" do
+      subject do
+        described_class.new.tap do |advisory|
+          advisory.cvss_v3 = 3.9
+        end
+      end
+
+      it { expect(subject.criticality).to eq(:low) }
+    end
+
+    context "when cvss_v3 is between 4.0 and 6.9" do
+      subject do
+        described_class.new.tap do |advisory|
+          advisory.cvss_v3 = 6.9
+        end
+      end
+
+      it { expect(subject.criticality).to eq(:medium) }
+    end
+
+    context "when cvss_v3 is between 7.0 and 8.9" do
+      subject do
+        described_class.new.tap do |advisory|
+          advisory.cvss_v3 = 8.9
+        end
+      end
+
+      it { expect(subject.criticality).to eq(:high) }
+    end
+
+    context "when cvss_v3 is between 9.0 and 10.0" do
+      subject do
+        described_class.new.tap do |advisory|
+          advisory.cvss_v3 = 10.0
+        end
+      end
+
+      it { expect(subject.criticality).to eq(:critical) }
     end
   end
 

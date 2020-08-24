@@ -20,13 +20,13 @@ describe "CLI" do
     end
 
     it "should print advisory information for the vulnerable gems" do
-      advisory_pattern = /(Name: [^\n]+
-Version: \d+.\d+.\d+
+      advisory_pattern = %r{(Name: [^\n]+
+Version: \d+\.\d+\.\d+(\.\d+)?
 Advisory: CVE-[0-9]{4}-[0-9]{4}
-Criticality: (High|Medium)
-URL: http:\/\/(direct|www\.)?osvdb.org\/show\/osvdb\/\d+
+Criticality: (Critical|High|Medium|Low|None|Unknown)
+URL: https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#!?&//=]*)
 Title: [^\n]*?
-Solution: upgrade to ((~>|=>) \d+.\d+.\d+, )*(~>|=>) \d+.\d+.\d+[\s\n]*?)+/
+Solution: upgrade to (~>|>=) \d+\.\d+\.\d+(\.\d+)?(, (~>|>=) \d+\.\d+\.\d+(\.\d+)?)*[\s\n]*?)}
 
       expect(subject).to match(advisory_pattern)
       expect(subject).to include("Vulnerabilities found!")
@@ -38,7 +38,7 @@ Solution: upgrade to ((~>|=>) \d+.\d+.\d+, )*(~>|=>) \d+.\d+.\d+[\s\n]*?)+/
     let(:directory) { File.join('spec','bundle',bundle) }
 
     let(:command) do
-      File.expand_path(File.join(File.dirname(__FILE__),'..','bin','bundler-audit -i OSVDB-89026'))
+      File.expand_path(File.join(File.dirname(__FILE__),'..','bin','bundler-audit -i CVE-2013-0156'))
     end
 
     subject do
@@ -46,7 +46,7 @@ Solution: upgrade to ((~>|=>) \d+.\d+.\d+, )*(~>|=>) \d+.\d+.\d+[\s\n]*?)+/
     end
 
     it "should not print advisory information for ignored gem" do
-      expect(subject).not_to include("OSVDB-89026")
+      expect(subject).not_to include("CVE-2013-0156")
     end
   end
 
